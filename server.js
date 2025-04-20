@@ -8,7 +8,7 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 const rooms = {}; 
-const bannedWords = ['badword1', 'badword2']; // Example banned words
+const bannedWords = ['badword1', 'badword2']; 
 const bannedUsers = {}; 
 
 function containsBannedWords(message) {
@@ -87,7 +87,7 @@ wss.on('connection', function connection(ws, req) {
             }
 
             if (data.type === 'kick') {
-                // Only admin can kick
+                
                 const isAdmin = user.username === 'admin';
                 if (isAdmin && data.targetUsername && data.targetUsername !== user.username) {
                     const targetUser = rooms[room].find(u => u.username === data.targetUsername);

@@ -11,25 +11,25 @@
       display: flex;
       flex-direction: column;
       height: 100vh;
-      color: #00FF00; /* Green text for hacker style */
-      background-color: #000000; /* Black background */
+      color: #00FF00; 
+      background-color: #000000; 
       transition: background-color 0.3s, color 0.3s;
       position: relative;
       overflow: hidden;
     }
 
     body::before {
-      content: "Shravan"; /* The text you want as background */
+      content: "Shravan"; 
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      font-size: 10rem; /* Adjust the size as needed */
-      color: rgba(0, 255, 0, 0.1); /* Light green with some opacity */
+      font-size: 10rem; 
+      color: rgba(0, 255, 0, 0.1); 
       z-index: -1;
-      filter: blur(10px); /* Apply blur effect */
+      filter: blur(10px); 
       white-space: nowrap;
-      pointer-events: none; /* Prevent interaction with the background text */
+      pointer-events: none; 
     }
 
     #main-container {
@@ -49,7 +49,7 @@
 
     #chat div {
       margin-bottom: 8px;
-      color: #00FF00; /* Green text for hacker style */
+      color: #00FF00; 
     }
 
     #form {
@@ -128,7 +128,7 @@
       background-color: #444;
     }
 
-    /* Light Mode */
+    
     .light-mode {
       background-color: #ffffff;
       color: #000000;
@@ -150,7 +150,7 @@
       background-color: #f0f0f0;
     }
 
-    /* Dark Mode */
+    
     .dark-mode {
       background-color: #181818;
       color: #e0e0e0;
@@ -172,7 +172,7 @@
       background-color: #444444;
     }
 
-    /* Blue Mode */
+  
     .blue-mode {
       background-color: #0044cc;
       color: #ffffff;
@@ -194,18 +194,18 @@
       background-color: #0055bb;
     }
 
-    /* Responsive adjustments for mobile */
+    
     @media (max-width: 768px) {
       #main-container {
         flex-direction: column;
       }
 
       #userListContainer {
-        display: none; /* Hide user list on mobile */
+        display: none; 
       }
 
       #chat {
-        padding-bottom: 80px; /* space for input */
+        padding-bottom: 80px;
       }
 
       #form {
@@ -263,7 +263,12 @@
   let username = prompt("Enter your username:") || "Anonymous";
   const userColor = '#' + Math.floor(Math.random()*16777215).toString(16);
 
-  const socket = new WebSocket(`ws://${location.host}?room=${room}&username=${username}`);
+  const socket = new WebSocket(
+  location.protocol === 'https:' 
+    ? `wss://${location.host}?room=${room}&username=${username}`
+    : `ws://${location.host}?room=${room}&username=${username}`
+);
+
   const chat = document.getElementById('chat');
   const form = document.getElementById('form');
   const messageInput = document.getElementById('messageInput');
@@ -281,7 +286,7 @@
 
     if (data.type === 'system') {
       div.textContent = `[System] ${data.message}`;
-      div.style.color = '#FF0000'; /* Red for system messages */
+      div.style.color = '#FF0000'; 
     } else if (data.type === 'message') {
       div.innerHTML = `<strong style="color:${data.usernameColor || '#00FF00'}">${data.username}:</strong> ${data.message}`;
     } else if (data.type === 'privateMessage') {
@@ -302,11 +307,11 @@
     messageInput.innerText = '';
   });
 
-  // Add event listener for the Enter key to submit the message
+  
   messageInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {  // Check if Enter is pressed without Shift (for multiline input)
-      e.preventDefault();  // Prevent newline when Shift is not pressed
-      form.dispatchEvent(new Event('submit'));  // Trigger the form submit programmatically
+    if (e.key === 'Enter' && !e.shiftKey) {  
+      e.preventDefault();  
+      form.dispatchEvent(new Event('submit'));  
     }
   });
 
@@ -343,12 +348,12 @@
   const themes = ['dark-mode', 'light-mode', 'blue-mode'];
   let currentTheme = 0;
   document.getElementById('change-theme-button').addEventListener('click', () => {
-    // Remove the current theme
+  
     document.body.classList.remove(themes[currentTheme]);
     document.getElementById('chat').classList.remove(themes[currentTheme]);
     document.getElementById('form').classList.remove(themes[currentTheme]);
-    currentTheme = (currentTheme + 1) % themes.length; // Cycle through themes
-    // Apply the new theme
+    currentTheme = (currentTheme + 1) % themes.length;
+    
     document.body.classList.add(themes[currentTheme]);
     document.getElementById('chat').classList.add(themes[currentTheme]);
     document.getElementById('form').classList.add(themes[currentTheme]);
