@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>hack.Chat.shravan</title>
+  <style>
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      color: #00FF00; /* Green text for hacker style */
+      background-color: #000000; /* Black background */
+      transition: background-color 0.3s, color 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: "Shravan"; /* The text you want as background */
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 10rem; /* Adjust the size as needed */
+      color: rgba(0, 255, 0, 0.1); /* Light green with some opacity */
+      z-index: -1;
+      filter: blur(10px); /* Apply blur effect */
+      white-space: nowrap;
+      pointer-events: none; /* Prevent interaction with the background text */
+    }
+
+    #main-container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      background-color: #000;
+    }
+
+    #chat div {
+      margin-bottom: 8px;
+      color: #00FF00; /* Green text for hacker style */
+    }
+
+    #form {
+      display: flex;
+      padding: 10px;
+      position: relative;
+      gap: 8px;
+      background-color: #111;
+    }
+
+    #messageInput {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #00FF00;
+      border-radius: 24px;
+      min-height: 40px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      background-color: #222;
+      color: #00FF00;
+    }
+
+    #emoji-button {
+      font-size: 24px;
+      cursor: pointer;
+      padding: 8px;
+      margin-left: 10px;
+      background-color: #444;
+      border: none;
+      border-radius: 50px;
+      color: #00FF00;
+    }
+
+    #emoji-picker {
+      display: none;
+      position: absolute;
+      bottom: 50px;
+      right: 80px;
+      background-color: #111;
+      padding: 10px;
+      border: 1px solid #00FF00;
+      border-radius: 4px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    #emoji-picker span {
+      cursor: pointer;
+      font-size: 24px;
+      margin: 5px;
+      color: #00FF00;
+    }
+
+    #userListContainer {
+      width: 250px;
+      background-color: #222;
+      padding: 10px;
+      overflow-y: auto;
+      display: block;
+      color: #00FF00;
+    }
+
+    #userList {
+      list-style: none;
+      padding: 0;
+    }
+
+    #userList li {
+      cursor: pointer;
+      margin: 5px 0;
+      padding: 5px;
+      background-color: #333;
+      border-radius: 4px;
+    }
+
+    #userList li:hover {
+      background-color: #444;
+    }
+
+    /* Light Mode */
+    .light-mode {
+      background-color: #ffffff;
+      color: #000000;
+    }
+
+    .light-mode #chat {
+      background-color: #f9f9f9;
+    }
+
+    .light-mode #form {
+      background-color: #eeeeee;
+    }
+
+    .light-mode #userListContainer {
+      background-color: #f9f9f9;
+    }
+
+    .light-mode #emoji-button {
+      background-color: #f0f0f0;
+    }
+
+    /* Dark Mode */
+    .dark-mode {
+      background-color: #181818;
+      color: #e0e0e0;
+    }
+
+    .dark-mode #chat {
+      background-color: #2a2a2a;
+    }
+
+    .dark-mode #form {
+      background-color: #333333;
+    }
+
+    .dark-mode #userListContainer {
+      background-color: #2a2a2a;
+    }
+
+    .dark-mode #emoji-button {
+      background-color: #444444;
+    }
+
+    /* Blue Mode */
+    .blue-mode {
+      background-color: #0044cc;
+      color: #ffffff;
+    }
+
+    .blue-mode #chat {
+      background-color: #0066cc;
+    }
+
+    .blue-mode #form {
+      background-color: #0055bb;
+    }
+
+    .blue-mode #userListContainer {
+      background-color: #0066cc;
+    }
+
+    .blue-mode #emoji-button {
+      background-color: #0055bb;
+    }
+
+    /* Responsive adjustments for mobile */
+    @media (max-width: 768px) {
+      #main-container {
+        flex-direction: column;
+      }
+
+      #userListContainer {
+        display: none; /* Hide user list on mobile */
+      }
+
+      #chat {
+        padding-bottom: 80px; /* space for input */
+      }
+
+      #form {
+        flex-direction: column;
+        gap: 8px;
+        padding: 10px;
+      }
+
+      #emoji-button {
+        margin-left: 0;
+      }
+
+      #messageInput {
+        min-height: 40px;
+        font-size: 16px;
+      }
+
+      #emoji-picker {
+        bottom: 60px;
+        right: 10px;
+      }
+    }
+  </style>
+</head>
+<h1 style="margin-left: 20px;">ShravanZz🥱</h1>
+<body class="dark-mode">
+
+<div id="main-container">
+  <div id="chat"></div>
+
+  <div id="userListContainer">
+    <h3>Users:</h3>
+    <ul id="userList"></ul>
+  </div>
+</div>
+
+<form id="form">
+  <div id="messageInput" contenteditable="true" placeholder="Type a message..."></div>
+ 
+  <button type="button" id="emoji-button">😎</button>
+  <button type="submit" style="border-radius: 20px; width: 100px; cursor: pointer; color: #000;background-color: #f56835; size: bold;"><h4>Send</h4></button>
+</form>
+
+<div id="emoji-picker">
+  <span>😊</span><span>😂</span><span>😍</span><span>🤔</span><span>🙄</span>
+  <span>😢</span><span>😎</span><span>💯</span><span>🎉</span><span>🚀</span>
+  <span>👍</span><span>👎</span><span>❗</span><span>❓</span>
+</div>
+
+<button id="change-theme-button" style="position: fixed; top: 20px; right: 20px;">Change Theme</button>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const room = urlParams.get('room') || 'default';
+  let username = prompt("Enter your username:") || "Anonymous";
+  const userColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+
+  const socket = new WebSocket(`ws://${location.host}?room=${room}&username=${username}`);
+  const chat = document.getElementById('chat');
+  const form = document.getElementById('form');
+  const messageInput = document.getElementById('messageInput');
+  const emojiButton = document.getElementById('emoji-button');
+  const emojiPicker = document.getElementById('emoji-picker');
+  const userListDiv = document.getElementById('userList');
+
+  socket.addEventListener('open', () => {
+    socket.send(JSON.stringify({ type: 'join', username: username }));
+  });
+
+  socket.addEventListener('message', (event) => {
+    const data = JSON.parse(event.data);
+    const div = document.createElement('div');
+
+    if (data.type === 'system') {
+      div.textContent = `[System] ${data.message}`;
+      div.style.color = '#FF0000'; /* Red for system messages */
+    } else if (data.type === 'message') {
+      div.innerHTML = `<strong style="color:${data.usernameColor || '#00FF00'}">${data.username}:</strong> ${data.message}`;
+    } else if (data.type === 'privateMessage') {
+      div.innerHTML = `<strong>Private Message from ${data.username}:</strong> ${data.message}`;
+      div.style.backgroundColor = '#444444';
+      div.style.border = '1px solid #00FF00';
+    }
+
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    let message = messageInput.innerText.trim();
+    if (!message) return;
+    socket.send(JSON.stringify({ type: 'message', message }));
+    messageInput.innerText = '';
+  });
+
+  // Add event listener for the Enter key to submit the message
+  messageInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {  // Check if Enter is pressed without Shift (for multiline input)
+      e.preventDefault();  // Prevent newline when Shift is not pressed
+      form.dispatchEvent(new Event('submit'));  // Trigger the form submit programmatically
+    }
+  });
+
+  emojiButton.addEventListener('click', () => {
+    emojiPicker.style.display = emojiPicker.style.display === 'block' ? 'none' : 'block';
+  });
+
+  emojiPicker.addEventListener('click', (e) => {
+    if (e.target.tagName === 'SPAN') {
+      messageInput.innerHTML += e.target.innerText;
+      emojiPicker.style.display = 'none';
+      messageInput.focus();
+    }
+  });
+
+  socket.addEventListener('message', (event) => {
+    const data = JSON.parse(event.data);
+    if (data.type === 'userlist') {
+      userListDiv.innerHTML = '';
+      data.users.forEach((user) => {
+        const userItem = document.createElement('li');
+        userItem.textContent = user;
+        userItem.addEventListener('click', () => {
+          const privateMessage = prompt(`Enter your private message to ${user}:`);
+          if (privateMessage) {
+            socket.send(JSON.stringify({ type: 'privateMessage', recipient: user, message: privateMessage }));
+          }
+        });
+        userListDiv.appendChild(userItem);
+      });
+    }
+  });
+
+  const themes = ['dark-mode', 'light-mode', 'blue-mode'];
+  let currentTheme = 0;
+  document.getElementById('change-theme-button').addEventListener('click', () => {
+    // Remove the current theme
+    document.body.classList.remove(themes[currentTheme]);
+    document.getElementById('chat').classList.remove(themes[currentTheme]);
+    document.getElementById('form').classList.remove(themes[currentTheme]);
+    currentTheme = (currentTheme + 1) % themes.length; // Cycle through themes
+    // Apply the new theme
+    document.body.classList.add(themes[currentTheme]);
+    document.getElementById('chat').classList.add(themes[currentTheme]);
+    document.getElementById('form').classList.add(themes[currentTheme]);
+  });
+</script>
+<p style="text-align: center; font-size: large;">©copyright 2025 by Shravan.</p>
+</body>
+</html>
