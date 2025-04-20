@@ -89,17 +89,18 @@
       bottom: 50px;
       right: 80px;
       background-color: #111;
-      padding: 10px;
+      padding: 5px;
       border: 1px solid #00FF00;
       border-radius: 4px;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-
+    
     #emoji-picker span {
       cursor: pointer;
       font-size: 24px;
       margin: 5px;
       color: #00FF00;
+      
     }
 
     #userListContainer {
@@ -128,7 +129,6 @@
       background-color: #444;
     }
 
-    
     .light-mode {
       background-color: #ffffff;
       color: #000000;
@@ -150,7 +150,6 @@
       background-color: #f0f0f0;
     }
 
-    
     .dark-mode {
       background-color: #181818;
       color: #e0e0e0;
@@ -172,7 +171,6 @@
       background-color: #444444;
     }
 
-  
     .blue-mode {
       background-color: #0044cc;
       color: #ffffff;
@@ -193,9 +191,22 @@
     .blue-mode #emoji-button {
       background-color: #0055bb;
     }
-    
 
-    
+    pre {
+      background-color: #333;
+      color: #00FF00;
+      padding: 10px;
+      border-radius: 5px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      overflow-x: auto;
+    }
+
+    code {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 1rem;
+    }
+
     @media (max-width: 768px) {
       #main-container {
         flex-direction: column;
@@ -245,19 +256,18 @@
 </div>
 
 <form id="form">
-  <div id="messageInput"  contenteditable="true" placeholder="Type a message...">
+  <div id="messageInput" contenteditable="true" placeholder="Type a message..."></div>
  
   <button type="button" style="position: fixed;right: 30px;" id="emoji-button">😎</button>
-  
 
-
-<div id="emoji-picker">
-  <span>😊</span><span>😂</span><span>😍</span><span>🤔</span><span>🙄</span>
-  <span>😢</span><span>😎</span><span>💯</span><span>🎉</span><span>🚀</span>
-  <span>👍</span><span>👎</span><span>❗</span><span>❓</span>
-</div>
-</div>
+  <div id="emoji-picker">
+    <span>😊</span><span>😂</span><span>😍</span><span>🤔</span><span>🙄</span>
+    <span>😢</span><span>😎</span><span>💯</span><span>🎉</span><span>🚀</span>
+    <span>👍</span><span>👎</span><span>❗</span><span>❓</span>
+  </div>
 </form>
+
+
 <button id="change-theme-button" style="position: fixed; top: 20px; right: 20px;border-radius: 10px; padding: 8px;">Change Theme</button>
 
 <script>
@@ -291,7 +301,12 @@
       div.textContent = `🤗 ${data.message}`;
       div.style.color = '#FF0000'; 
     } else if (data.type === 'message') {
-      div.innerHTML = `<strong style="color:${data.usernameColor || '#00FF00'}">${data.username}:</strong> ${data.message}`;
+      // Check for code blocks in the message and render accordingly
+      if (data.message.includes('<pre><code>')) {
+        div.innerHTML = `<strong style="color:${data.usernameColor || '#00FF00'}">${data.username}:</strong> ${data.message}`;
+      } else {
+        div.innerHTML = `<strong style="color:${data.usernameColor || '#00FF00'}">${data.username}:</strong> ${data.message}`;
+      }
     } else if (data.type === 'privateMessage') {
       div.innerHTML = `<strong>Private Message from ${data.username}:</strong> ${data.message}`;
       div.style.backgroundColor = '#444444';
@@ -304,15 +319,20 @@
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    let message = messageInput.innerText.trim();
+    let message = messageInput.innerHTML.trim();
     if (!message) return;
+
+    // Check for code blocks in the message
+    if (message.includes('```')) {
+      message = message.replace(/```/g, '<pre><code>').replace(/```/g, '</code></pre>');
+    }
+
     socket.send(JSON.stringify({ type: 'message', message }));
-    messageInput.innerText = '';
+    messageInput.innerHTML = '';  // Clear the input after sending
   });
 
-  
   messageInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {  
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();  
       form.dispatchEvent(new Event('submit'));  
     }
@@ -330,28 +350,9 @@
     }
   });
 
-  socket.addEventListener('message', (event) => {
-    const data = JSON.parse(event.data);
-    if (data.type === 'userlist') {
-      userListDiv.innerHTML = '';
-      data.users.forEach((user) => {
-        const userItem = document.createElement('li');
-        userItem.textContent = user;
-        userItem.addEventListener('click', () => {
-          const privateMessage = prompt(`Enter your private message to ${user}:`);
-          if (privateMessage) {
-            socket.send(JSON.stringify({ type: 'privateMessage', recipient: user, message: privateMessage }));
-          }
-        });
-        userListDiv.appendChild(userItem);
-      });
-    }
-  });
-
   const themes = ['dark-mode', 'light-mode', 'blue-mode'];
   let currentTheme = 0;
   document.getElementById('change-theme-button').addEventListener('click', () => {
-  
     document.body.classList.remove(themes[currentTheme]);
     document.getElementById('chat').classList.remove(themes[currentTheme]);
     document.getElementById('form').classList.remove(themes[currentTheme]);
@@ -362,6 +363,7 @@
     document.getElementById('form').classList.add(themes[currentTheme]);
   });
 </script>
+
 <p style="text-align: center; font-size: large;">©copyright 2025 by Shravan.</p>
 
 </body>
