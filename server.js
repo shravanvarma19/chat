@@ -44,7 +44,7 @@ wss.on('connection', function connection(ws, req) {
             if (data.type === 'join') {
                 user.username = data.username;
                 broadcast(room, {
-                    type: 'system',
+                    type: '🤗',
                     message: `${data.username} joined the chat`
                 });
                 sendUserList(room);
@@ -93,14 +93,14 @@ wss.on('connection', function connection(ws, req) {
                     const targetUser = rooms[room].find(u => u.username === data.targetUsername);
                     if (targetUser) {
                         targetUser.socket.send(JSON.stringify({
-                            type: 'system',
+                            type: '*',
                             message: 'You have been kicked out of the room.'
                         }));
                         targetUser.socket.close();
                         rooms[room] = rooms[room].filter(u => u !== targetUser);
 
                         broadcast(room, {
-                            type: 'system',
+                            type: '$*',
                             message: `${data.targetUsername} was kicked by admin.`
                         });
                         sendUserList(room);

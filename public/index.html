@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>hack.Chat.shravan</title>
+  <title>hack.shravan</title>
   <style>
     body {
       font-family: 'Courier New', Courier, monospace;
@@ -193,6 +193,7 @@
     .blue-mode #emoji-button {
       background-color: #0055bb;
     }
+    
 
     
     @media (max-width: 768px) {
@@ -231,6 +232,7 @@
   </style>
 </head>
 <h1 style="margin-left: 20px;">ShravanZz🥱</h1>
+<h3 style="margin-left: 170px; margin-top:-24px;padding-top: 1px;">varmA</h3>
 <body class="dark-mode">
 
 <div id="main-container">
@@ -243,19 +245,20 @@
 </div>
 
 <form id="form">
-  <div id="messageInput" contenteditable="true" placeholder="Type a message..."></div>
+  <div id="messageInput"  contenteditable="true" placeholder="Type a message...">
  
-  <button type="button" id="emoji-button">😎</button>
-  <button type="submit" style="border-radius: 20px; width: 100px; cursor: pointer; color: #000;background-color: #f56835; size: bold;"><h4>Send</h4></button>
-</form>
+  <button type="button" style="position: fixed;right: 30px;" id="emoji-button">😎</button>
+  
+
 
 <div id="emoji-picker">
   <span>😊</span><span>😂</span><span>😍</span><span>🤔</span><span>🙄</span>
   <span>😢</span><span>😎</span><span>💯</span><span>🎉</span><span>🚀</span>
   <span>👍</span><span>👎</span><span>❗</span><span>❓</span>
 </div>
-
-<button id="change-theme-button" style="position: fixed; top: 20px; right: 20px;">Change Theme</button>
+</div>
+</form>
+<button id="change-theme-button" style="position: fixed; top: 20px; right: 20px;border-radius: 10px; padding: 8px;">Change Theme</button>
 
 <script>
   const urlParams = new URLSearchParams(window.location.search);
@@ -285,7 +288,7 @@
     const div = document.createElement('div');
 
     if (data.type === 'system') {
-      div.textContent = `[System] ${data.message}`;
+      div.textContent = `🤗 ${data.message}`;
       div.style.color = '#FF0000'; 
     } else if (data.type === 'message') {
       div.innerHTML = `<strong style="color:${data.usernameColor || '#00FF00'}">${data.username}:</strong> ${data.message}`;
@@ -360,5 +363,6 @@
   });
 </script>
 <p style="text-align: center; font-size: large;">©copyright 2025 by Shravan.</p>
+
 </body>
 </html>
