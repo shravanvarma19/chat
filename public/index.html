@@ -303,7 +303,18 @@
     } else if (data.type === 'message') {
       // Check for code blocks in the message and render accordingly
       if (data.message.includes('<pre><code>')) {
+        const id = `code-${Date.now() + Math.random().toString(36).substr(2, 5)}`;
+        const codeHTML = `
+          <div style="position: relative;">
+            ${data.message}
+            <button onclick="copyCode('${id}')" style="position: absolute; top: 8px; right: 8px; background: #222; color: #00FF00; border: 1px solid #00FF00; border-radius: 5px; padding: 4px 8px; cursor: pointer;">Copy</button>
+          </div>
+        `;
         div.innerHTML = `<strong style="color:${data.usernameColor || '#00FF00'}">${data.username}:</strong> ${data.message}`;
+        setTimeout(() => {
+          const codeBlock = div.querySelector('pre code');
+          if (codeBlock) codeBlock.id = id;
+        }, 0);
       } else {
         div.innerHTML = `<strong style="color:${data.usernameColor || '#00FF00'}">${data.username}:</strong> ${data.message}`;
       }
@@ -324,8 +335,11 @@
 
     // Check for code blocks in the message
     if (message.includes('```')) {
-      message = message.replace(/```/g, '<pre><code>').replace(/```/g, '</code></pre>');
-    }
+      message = message.replace(/```/g,match =>{
+        return match ==='```' ?
+       '<pre><code>' :'</code></pre>';
+    });
+  }
 
     socket.send(JSON.stringify({ type: 'message', message }));
     messageInput.innerHTML = '';  // Clear the input after sending
@@ -362,6 +376,7 @@
     document.getElementById('chat').classList.add(themes[currentTheme]);
     document.getElementById('form').classList.add(themes[currentTheme]);
   });
+  
 </script>
 
 <p style="text-align: center; font-size: large;">©copyright 2025 by Shravan.</p>
