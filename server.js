@@ -3,6 +3,11 @@ const http = require('http');
 const WebSocket = require('ws');
 const url = require('url');
 const mongoose = require('mongoose');
+const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/chatVisitors';  // Fallback to local DB
+mongoose.connect(mongoURI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
 
 const app = express();
 const server = http.createServer(app);
