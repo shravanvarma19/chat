@@ -3,7 +3,7 @@ const http = require('http');
 const WebSocket = require('ws');
 const url = require('url');
 const mongoose = require('mongoose');
-const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/chatVisitors';  
+const mongoURI = process.env.MONGO_URI || 'mongodb+srv://Shravan:12345@cluster0.bmzwl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';  
 mongoose.connect(mongoURI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -18,7 +18,7 @@ const bannedWords = ['badword1', 'badword2'];
 const bannedUsers = {};
 
 
-mongoose.connect('mongodb://localhost:27017/chatVisitors')
+mongoose.connect('mongodb+srv://Shravan:12345@cluster0.bmzwl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
 .then(() => console.log('✅ Connected to MongoDB'))
 .catch(err => console.error('❌ MongoDB connection error:', err));
 
