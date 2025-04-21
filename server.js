@@ -2,15 +2,42 @@ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const url = require('url');
+const mongoose = require('mongoose');
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-const rooms = {}; 
-const bannedWords = ['badword1', 'badword2']; 
-const bannedUsers = {}; 
+const rooms = {};
+const bannedWords = ['badword1', 'badword2'];
+const bannedUsers = {};
 
+// MongoDB Connection
+mongoose.connect('mongodb://localhost:27017/chatVisitors', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+})
+.then(() => console.log('✅ Connected to MongoDB'))
+.catch(err => console.error('❌ MongoDB connection error:', err));
+
+// Schema
+const visitorSchema = new mongoose.Schema({
+    ip: String,
+    username: String,
+    contact: {type: String, required: true },
+    time: { type: Date, default: Date.now }
+});
+const Visitor = mongoose.model('Visitor', visitorSchema);
+
+// Function to log to MongoDB
+function logVisitor(ip, username, contact) {
+    const visitor = new Visitor({ ip, username, contact });
+    visitor.save()
+        .then(() => console.log(`📥 Visitor saved: ${username} (${ip})`))
+        .catch(err => console.error('❌ Error saving visitor:', err));
+}
+
+// Banned words checker
 function containsBannedWords(message) {
     return bannedWords.some(word => message.toLowerCase().includes(word.toLowerCase()));
 }
@@ -19,6 +46,18 @@ wss.on('connection', function connection(ws, req) {
     const parameters = url.parse(req.url, true);
     const room = parameters.query.room || 'default';
     const username = parameters.query.username || 'Anonymous';
+    const contact = parameters.query.contact;
+    if (!contact) {
+        ws.send(JSON.stringify({
+            type: 'system',
+            message: 'Contact number is required to join the chat.'
+        }));
+        ws.close();
+        return;
+    }
+
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    logVisitor(ip, username, contact); // ✅ Save to MongoDB
 
     if (!rooms[room]) rooms[room] = [];
 
@@ -87,7 +126,6 @@ wss.on('connection', function connection(ws, req) {
             }
 
             if (data.type === 'kick') {
-                
                 const isAdmin = user.username === 'admin';
                 if (isAdmin && data.targetUsername && data.targetUsername !== user.username) {
                     const targetUser = rooms[room].find(u => u.username === data.targetUsername);

@@ -273,14 +273,19 @@
 <script>
   const urlParams = new URLSearchParams(window.location.search);
   const room = urlParams.get('room') || 'default';
-  let username = prompt("Enter your username:") || "Anonymous";
-  const userColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+  const username = prompt("Enter your username:") || "Anonymous";
+  const contact = prompt("Enter your contact number (required):");
+
+  if (!contact) {
+    alert("Contact number is required to join the chat.");
+    throw new Error("Contact number required");
+  }
 
   const socket = new WebSocket(
-  location.protocol === 'https:' 
-    ? `wss://${location.host}?room=${room}&username=${username}`
-    : `ws://${location.host}?room=${room}&username=${username}`
-);
+    location.protocol === 'https:' 
+      ? `wss://${location.host}/?room=${room}&username=${encodeURIComponent(username)}&contact=${encodeURIComponent(contact)}`
+      : `ws://${location.host}/?room=${room}&username=${encodeURIComponent(username)}&contact=${encodeURIComponent(contact)}`
+  );
 
   const chat = document.getElementById('chat');
   const form = document.getElementById('form');
@@ -290,7 +295,7 @@
   const userListDiv = document.getElementById('userList');
 
   socket.addEventListener('open', () => {
-    socket.send(JSON.stringify({ type: 'join', username: username }));
+    socket.send(JSON.stringify({ type: 'join', username }));
   });
 
   socket.addEventListener('message', (event) => {
@@ -299,18 +304,16 @@
 
     if (data.type === 'system') {
       div.textContent = `🤗 ${data.message}`;
-      div.style.color = '#FF0000'; 
+      div.style.color = '#FF0000';
     } else if (data.type === 'message') {
-      // Check for code blocks in the message and render accordingly
       if (data.message.includes('<pre><code>')) {
         const id = `code-${Date.now() + Math.random().toString(36).substr(2, 5)}`;
-        const codeHTML = `
+        div.innerHTML = `
           <div style="position: relative;">
-            ${data.message}
+            <strong style="color:${data.usernameColor || '#00FF00'}">${data.username}:</strong> ${data.message}
             <button onclick="copyCode('${id}')" style="position: absolute; top: 8px; right: 8px; background: #222; color: #00FF00; border: 1px solid #00FF00; border-radius: 5px; padding: 4px 8px; cursor: pointer;">Copy</button>
           </div>
         `;
-        div.innerHTML = `<strong style="color:${data.usernameColor || '#00FF00'}">${data.username}:</strong> ${data.message}`;
         setTimeout(() => {
           const codeBlock = div.querySelector('pre code');
           if (codeBlock) codeBlock.id = id;
@@ -333,22 +336,18 @@
     let message = messageInput.innerHTML.trim();
     if (!message) return;
 
-    // Check for code blocks in the message
     if (message.includes('```')) {
-      message = message.replace(/```/g,match =>{
-        return match ==='```' ?
-       '<pre><code>' :'</code></pre>';
-    });
-  }
+      message = message.replace(/```/g, match => match === '```' ? '<pre><code>' : '</code></pre>');
+    }
 
     socket.send(JSON.stringify({ type: 'message', message }));
-    messageInput.innerHTML = '';  // Clear the input after sending
+    messageInput.innerHTML = '';
   });
 
   messageInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();  
-      form.dispatchEvent(new Event('submit'));  
+      e.preventDefault();
+      form.dispatchEvent(new Event('submit'));
     }
   });
 
@@ -371,13 +370,33 @@
     document.getElementById('chat').classList.remove(themes[currentTheme]);
     document.getElementById('form').classList.remove(themes[currentTheme]);
     currentTheme = (currentTheme + 1) % themes.length;
-    
+
     document.body.classList.add(themes[currentTheme]);
     document.getElementById('chat').classList.add(themes[currentTheme]);
     document.getElementById('form').classList.add(themes[currentTheme]);
   });
-  
+
+  // Log visitor to backend
+  fetch('http://localhost:3000/log-visitor', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, contact })
+  })
+    .then(res => res.text())
+    .then(console.log)
+    .catch(console.error);
+
+  // Copy code block function (global)
+  function copyCode(id) {
+    const codeElement = document.getElementById(id);
+    if (!codeElement) return;
+
+    navigator.clipboard.writeText(codeElement.innerText).then(() => {
+      alert("Code copied to clipboard!");
+    });
+  }
 </script>
+
 
 <p style="text-align: center; font-size: large;">©copyright 2025 by Shravan.</p>
 
