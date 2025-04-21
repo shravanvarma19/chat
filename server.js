@@ -12,7 +12,7 @@ const rooms = {};
 const bannedWords = ['badword1', 'badword2'];
 const bannedUsers = {};
 
-// MongoDB Connection
+
 mongoose.connect('mongodb://localhost:27017/chatVisitors', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
@@ -20,7 +20,7 @@ mongoose.connect('mongodb://localhost:27017/chatVisitors', {
 .then(() => console.log('✅ Connected to MongoDB'))
 .catch(err => console.error('❌ MongoDB connection error:', err));
 
-// Schema
+
 const visitorSchema = new mongoose.Schema({
     ip: String,
     username: String,
@@ -29,7 +29,7 @@ const visitorSchema = new mongoose.Schema({
 });
 const Visitor = mongoose.model('Visitor', visitorSchema);
 
-// Function to log to MongoDB
+
 function logVisitor(ip, username, contact) {
     const visitor = new Visitor({ ip, username, contact });
     visitor.save()
@@ -37,7 +37,7 @@ function logVisitor(ip, username, contact) {
         .catch(err => console.error('❌ Error saving visitor:', err));
 }
 
-// Banned words checker
+
 function containsBannedWords(message) {
     return bannedWords.some(word => message.toLowerCase().includes(word.toLowerCase()));
 }
@@ -57,7 +57,7 @@ wss.on('connection', function connection(ws, req) {
     }
 
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    logVisitor(ip, username, contact); // ✅ Save to MongoDB
+    logVisitor(ip, username, contact); 
 
     if (!rooms[room]) rooms[room] = [];
 
