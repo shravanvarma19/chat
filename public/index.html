@@ -3,248 +3,225 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>hack.shravan</title>
-  <style>
-    body {
-      font-family: 'Courier New', Courier, monospace;
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      color: #00FF00; 
-      background-color: #000000; 
-      transition: background-color 0.3s, color 0.3s;
-      position: relative;
-      overflow: hidden;
-    }
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
 
-    body::before {
-      content: "Shravan"; 
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 10rem; 
-      color: rgba(0, 255, 0, 0.1); 
-      z-index: -1;
-      filter: blur(10px); 
-      white-space: nowrap;
-      pointer-events: none; 
-    }
+  <title>Shravan.Chat</title>
 
+ <style>
+  body {
+    margin: 0;
+    font-family: 'Fira Code', 'Courier New', monospace;
+    background-color: #0d0d0d;
+    color: #00ff99;
+    transition: all 0.3s ease;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #00ff99;
+    border-radius: 5px;
+  }
+
+  #main-container {
+    display: flex;
+    padding: 20px;
+    flex-direction: row;
+    height: 63vh;
+    border-top: 2px solid #00ff99;
+    border-bottom: 2px solid #00ff99;
+    border-radius: 24px;
+    overflow: hidden;
+  }
+
+  #chat {
+    flex: 3;
+    padding: 20px;
+    overflow-y: auto;
+    background-color: #111;
+    border-right: 2px solid #00ff99;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .message {
+    background-color: #1a1a1a;
+    padding: 10px 15px;
+    border-radius: 10px;
+    max-width: 75%;
+    box-shadow: 0 0 5px #00ff99;
+    animation: fadeIn 0.3s ease-in;
+  }
+
+  .message.user {
+    align-self: flex-end;
+    background-color: #002b36;
+    color: #00ffff;
+    box-shadow: 0 0 8px #00ffff;
+  }
+
+  .message.admin {
+    background-color: #330000;
+    color: hsl(0, 52%, 79%);
+    box-shadow: 0 0 8px hsl(117, 68%, 52%);
+  }
+
+  #userListContainer {
+    flex: 1;
+    background-color: hsl(0, 3%, 14%);
+    padding: 20px;
+    border-radius: 20px;
+    overflow-y: auto;
+    border-left: 2px solid #00ff99;
+  }
+
+  #userListContainer h3 {
+    margin-top: 0;
+    border-bottom: 1px dashed #00ff99;
+    padding-bottom: 5px;
+  }
+
+  #userList li {
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 5px;
+    margin-bottom: 5px;
+    background-color: #1a1a1a;
+    transition: background 0.3s ease;
+  }
+
+  #userList li:hover {
+    background-color: #42d9e733;
+  }
+
+  
+#form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px;
+}
+
+#messageInput {
+  flex: 1;
+  min-height: 40px;
+  padding: 8px;
+  border: 1px solid hsl(150, 75%, 49%);
+  border-radius: 15px;
+  background-color: #222;
+  color: white;
+  font-family: 'Fira Code', monospace;
+}
+
+
+
+
+
+
+  #messageInput:focus {
+    outline: none;
+    box-shadow: 0 0 20px #00ff99;
+  }
+
+  #emoji-picker {
+    display: none;
+    position: absolute;
+    right: 60px;
+    cursor: pointer;
+    bottom: 70px;
+    background-color: #1f1f1f;
+    border: 1px solid #00ff99;
+    padding: 10px;
+    border-radius: 10px;
+    max-width: 200px;
+    flex-wrap: wrap;
+    z-index: 999;
+  }
+
+  #emoji-picker span {
+    cursor: pointer;
+    font-size: 22px;
+    padding: 5px;
+    transition: transform 0.2s ease;
+  }
+
+  #emoji-picker span:hover {
+    transform: scale(1.3);
+  }
+  #send-button {
+  padding: 12px 20px;
+  font-size: 14px;
+  border: none;
+  border-radius: 14px;
+  background-color: #1e90ff;
+  color: white;
+  font-family: 'Fira Code', monospace;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+#send-button:hover {
+  background-color: #007acc;
+}
+
+
+  /* Themes */
+  .dark-mode {
+    background-color: #0d0d0d;
+    color: #00ff99;
+  }
+
+  .light-mode {
+    background-color: #f9f9f9;
+    color: #9ba0eb;
+  }
+
+  .blue-mode {
+    background-color: #002244;
+    color: #00ccff;
+  }
+
+  /* Responsive Layout */
+  @media screen and (max-width: 768px) {
     #main-container {
-      display: flex;
-      flex: 1;
-      overflow: hidden;
+      flex-direction: column;
     }
 
     #chat {
       flex: 1;
-      overflow-y: auto;
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      background-color: #000;
-    }
-
-    #chat div {
-      margin-bottom: 8px;
-      color: #00FF00; 
-    }
-
-    #form {
-      display: flex;
-      padding: 10px;
-      position: relative;
-      gap: 8px;
-      background-color: #111;
-    }
-
-    #messageInput {
-      flex: 1;
-      padding: 8px;
-      border: 1px solid #00FF00;
-      border-radius: 24px;
-      min-height: 40px;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      background-color: #222;
-      color: #00FF00;
-    }
-
-    #emoji-button {
-      font-size: 24px;
-      cursor: pointer;
-      padding: 8px;
-      margin-left: 10px;
-      background-color: #444;
-      border: none;
-      border-radius: 50px;
-      color: #00FF00;
-    }
-
-    #emoji-picker {
-      display: none;
-      position: absolute;
-      bottom: 50px;
-      right: 80px;
-      background-color: #111;
-      padding: 5px;
-      border: 1px solid #00FF00;
-      border-radius: 4px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    
-    #emoji-picker span {
-      cursor: pointer;
-      font-size: 24px;
-      margin: 5px;
-      color: #00FF00;
-      
+      border-right: none;
     }
 
     #userListContainer {
-      width: 250px;
-      background-color: #222;
-      padding: 10px;
-      overflow-y: auto;
-      display: block;
-      color: #00FF00;
+      flex: 1;
+      border-left: none;
+      border-top: 1px solid #00ff99;
     }
 
-    #userList {
-      list-style: none;
-      padding: 0;
+    #form {
+      margin: 10px;
     }
 
-    #userList li {
-      cursor: pointer;
-      margin: 5px 0;
-      padding: 5px;
-      background-color: #333;
-      border-radius: 4px;
+    #emoji-picker {
+      right: 20px;
+      bottom: 100px;
     }
+  }
 
-    #userList li:hover {
-      background-color: #444;
-    }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
 
-    .light-mode {
-      background-color: #ffffff;
-      color: #000000;
-    }
-
-    .light-mode #chat {
-      background-color: #f9f9f9;
-    }
-
-    .light-mode #form {
-      background-color: #eeeeee;
-    }
-
-    .light-mode #userListContainer {
-      background-color: #f9f9f9;
-    }
-
-    .light-mode #emoji-button {
-      background-color: #f0f0f0;
-    }
-
-    .dark-mode {
-      background-color: #181818;
-      color: #e0e0e0;
-    }
-
-    .dark-mode #chat {
-      background-color: #2a2a2a;
-    }
-
-    .dark-mode #form {
-      background-color: #333333;
-    }
-
-    .dark-mode #userListContainer {
-      background-color: #2a2a2a;
-    }
-
-    .dark-mode #emoji-button {
-      background-color: #444444;
-    }
-
-    .blue-mode {
-      background-color: #0044cc;
-      color: #ffffff;
-    }
-
-    .blue-mode #chat {
-      background-color: #0066cc;
-    }
-
-    .blue-mode #form {
-      background-color: #0055bb;
-    }
-
-    .blue-mode #userListContainer {
-      background-color: #0066cc;
-    }
-
-    .blue-mode #emoji-button {
-      background-color: #0055bb;
-    }
-
-    pre {
-      background-color: #333;
-      color: #00FF00;
-      padding: 10px;
-      border-radius: 5px;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      overflow-x: auto;
-    }
-
-    code {
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 1rem;
-    }
-
-    @media (max-width: 768px) {
-      #main-container {
-        flex-direction: column;
-      }
-
-      #userListContainer {
-        display: none; 
-      }
-
-      #chat {
-        padding-bottom: 80px;
-      }
-
-      #form {
-        flex-direction: column;
-        gap: 8px;
-        padding: 10px;
-      }
-
-      #emoji-button {
-        margin-left: 0;
-      }
-
-      #messageInput {
-        min-height: 40px;
-        font-size: 16px;
-      }
-
-      #emoji-picker {
-        bottom: 60px;
-        right: 10px;
-      }
-    }
-  </style>
 </head>
-<h1 style="margin-left: 20px;">ShravanZz🥱</h1>
-<h3 style="margin-left: 170px; margin-top:-24px;padding-top: 1px;">varmA</h3>
 <body class="dark-mode">
+<h1 style="margin-left: 20px;margin-top: 3px;">ShravanZz🥱</h1>
+<h3 style="margin-left: 170px; margin-top:-24px;padding-top: 1px;">varmA🤗</h3>
 
 <div id="main-container">
   <div id="chat"></div>
@@ -257,9 +234,8 @@
 
 <form id="form">
   <div id="messageInput" contenteditable="true" placeholder="Type a message..."></div>
- 
-  <button type="button" style="position: fixed;right: 30px;" id="emoji-button">😎</button>
-
+  <button type="button" style="position: fixed;right: 110px;bottom: 95px;border-radius: 10px;" id="emoji-button">😎</button>
+  <button type="submit" id="send-button">Send</button>
   <div id="emoji-picker">
     <span>😊</span><span>😂</span><span>😍</span><span>🤔</span><span>🙄</span>
     <span>😢</span><span>😎</span><span>💯</span><span>🎉</span><span>🚀</span>
@@ -267,8 +243,7 @@
   </div>
 </form>
 
-
-<button id="change-theme-button" style="position: fixed; top: 20px; right: 20px;border-radius: 10px; padding: 8px;">Change Theme</button>
+<button id="change-theme-button" style="position: fixed; top: 20px;background-color: lightgreen; right: 20px;border-radius: 10px; padding: 8px;">Change Theme</button>
 
 <script>
   const urlParams = new URLSearchParams(window.location.search);
@@ -311,7 +286,7 @@
         div.innerHTML = `
           <div style="position: relative;">
             <strong style="color:${data.usernameColor || '#00FF00'}">${data.username}:</strong> ${data.message}
-            <button onclick="copyCode('${id}')" style="position: absolute; top: 8px; right: 8px; background: #222; color: #00FF00; border: 1px solid #00FF00; border-radius: 5px; padding: 4px 8px; cursor: pointer;">Copy</button>
+            <button onclick="copyCode('${id}')" style="position: absolute; top: 8px; right: 8px; background: #222; color: #00FF00; border: 1px solid #00FF00; border-radius: 5px; padding: 4px 8px; cursor: pointer;">CopyCat</button>
           </div>
         `;
         setTimeout(() => {
@@ -325,6 +300,27 @@
       div.innerHTML = `<strong>Private Message from ${data.username}:</strong> ${data.message}`;
       div.style.backgroundColor = '#444444';
       div.style.border = '1px solid #00FF00';
+      div.style.borderRadius='20px';
+      div.style.maxHeight='36px';
+     
+    } else if (data.type === 'userlist') {
+      userListDiv.innerHTML = '';
+      data.users.forEach(user => {
+        const li = document.createElement('li');
+        li.textContent = user;
+        li.onclick = () => {
+          if (user === username) return;
+          const pm = prompt(`Send private message to ${user}:`);
+          if (pm) {
+            socket.send(JSON.stringify({
+              type: 'privateMessage',
+              recipient: user,
+              message: pm
+            }));
+          }
+        };
+        userListDiv.appendChild(li);
+      });
     }
 
     chat.appendChild(div);
@@ -366,18 +362,18 @@
   const themes = ['dark-mode', 'light-mode', 'blue-mode'];
   let currentTheme = 0;
   document.getElementById('change-theme-button').addEventListener('click', () => {
-    document.body.classList.remove(themes[currentTheme]);
-    document.getElementById('chat').classList.remove(themes[currentTheme]);
-    document.getElementById('form').classList.remove(themes[currentTheme]);
-    currentTheme = (currentTheme + 1) % themes.length;
+  document.body.classList.remove(themes[currentTheme]);
+  currentTheme = (currentTheme + 1) % themes.length;
+  document.body.classList.add(themes[currentTheme]);
 
-    document.body.classList.add(themes[currentTheme]);
-    document.getElementById('chat').classList.add(themes[currentTheme]);
-    document.getElementById('form').classList.add(themes[currentTheme]);
-  });
+  // Apply theme class to chat and messageInput
+  document.getElementById('chat').className = themes[currentTheme];
+  document.getElementById('form').className = themes[currentTheme];
+  document.getElementById('messageInput').className = themes[currentTheme];
+});
 
-  // Log visitor to backend
-  fetch('http://localhost:3000/log-visitor', {
+
+  fetch(`${location.origin}/log-visitor`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, contact })
@@ -386,7 +382,6 @@
     .then(console.log)
     .catch(console.error);
 
-  // Copy code block function (global)
   function copyCode(id) {
     const codeElement = document.getElementById(id);
     if (!codeElement) return;
@@ -397,8 +392,6 @@
   }
 </script>
 
-
-<p style="text-align: center; font-size: large;">©copyright 2025 by Shravan.</p>
-
+<p style="text-align: center; font-size: large;">&copy;copyright 2025 by Shravan.</p>
 </body>
 </html>
