@@ -4,7 +4,7 @@ const WebSocket = require('ws');
 const url = require('url');
 const mongoose = require('mongoose');
 
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'shravan';
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_CONTACT = process.env.ADMIN_CONTACT || '6301238322';
 
 const mongoURI =
@@ -12,10 +12,7 @@ const mongoURI =
   'mongodb+srv://Shravan:12345@cluster0.bmzwl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 
 mongoose
-  .connect(mongoURI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(mongoURI)
   .then(() => console.log('✅ Connected to MongoDB'))
   .catch((err) => console.error('❌ MongoDB connection error:', err));
 
@@ -56,9 +53,9 @@ const visitorSchema = new mongoose.Schema({
   time: { type: Date, default: Date.now },
 });
 
-const Visitor = mongoose.model('Visitor', visitorSchema);
+const Visitor = mongoose.models.Visitor || mongoose.model('Visitor', visitorSchema);
 
-function sanitizeMessage(input) {
+function sanitizeText(input) {
   if (typeof input !== 'string') return '';
   return input
     .replace(/&/g, '&amp;')
@@ -68,13 +65,45 @@ function sanitizeMessage(input) {
     .replace(/'/g, '&#39;')
     .trim();
 }
-function isBlockedUser(room, contact, ip) {
-  const entries = bannedEntries[room] || [];
-  return entries.some(entry => entry.contact === contact || entry.ip === ip);
+
+function getClientIp(req) {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) return String(forwarded).split(',')[0].trim();
+  return req.socket.remoteAddress || '';
 }
+
+function getRoom(room) {
+  if (!rooms[room]) rooms[room] = [];
+  return rooms[room];
+}
+
+function getRoomOnlineUsers(room) {
+  if (!onlineUsersByRoom[room]) onlineUsersByRoom[room] = [];
+  return onlineUsersByRoom[room];
+}
+
+function getRoomMutedWords(room) {
+  if (!mutedWordsByRoom[room]) mutedWordsByRoom[room] = [...defaultBannedWords];
+  return mutedWordsByRoom[room];
+}
+
+function getRoomBans(room) {
+  if (!bannedEntries[room]) bannedEntries[room] = [];
+  return bannedEntries[room];
+}
+
+function isAdminUser(user) {
+  return !!user && !!user.isAdmin;
+}
+
+function isBlockedUser(room, contact, ip) {
+  const entries = getRoomBans(room);
+  return entries.some((entry) => entry.contact === contact || entry.ip === ip);
+}
+
 function containsBannedWords(message, room) {
   const clean = String(message || '').toLowerCase();
-  const words = mutedWordsByRoom[room] || defaultBannedWords;
+  const words = getRoomMutedWords(room);
   return words.some((word) => clean.includes(String(word).toLowerCase()));
 }
 
@@ -100,33 +129,23 @@ function isRateLimited(userKey) {
 }
 
 function getAdminSockets(room) {
-  if (!rooms[room]) return [];
-  return rooms[room].filter((u) => u.isAdmin);
+  return getRoom(room).filter((u) => u.isAdmin);
 }
 
-function notifyAdmins(room, data) {
-  const payload = JSON.stringify(data);
-  getAdminSockets(room).forEach(({ socket }) => {
-    if (socket.readyState === WebSocket.OPEN) {
-      socket.send(payload);
-    }
-  });
+function safeSend(socket, data) {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify(data));
+  }
 }
 
 function broadcast(room, data) {
-  if (!rooms[room]) return;
-  const message = JSON.stringify(data);
-  rooms[room].forEach(({ socket }) => {
-    if (socket.readyState === WebSocket.OPEN) {
-      socket.send(message);
-    }
+  getRoom(room).forEach(({ socket }) => {
+    safeSend(socket, data);
   });
 }
 
 function sendUserList(room) {
-  if (!rooms[room]) return;
-
-  const userList = rooms[room].map((user) => ({
+  const userList = getRoom(room).map((user) => ({
     username: user.username,
     isAdmin: !!user.isAdmin,
   }));
@@ -138,105 +157,114 @@ function sendUserList(room) {
 }
 
 function sendOnlineUsersPanel(room) {
-  if (!rooms[room]) return;
+  const onlineUsers = getRoomOnlineUsers(room);
 
-  const publicUsers = (onlineUsersByRoom[room] || []).map((u) => ({
+  const publicUsers = onlineUsers.map((u) => ({
     username: u.username,
     isAdmin: !!u.isAdmin,
   }));
 
-  const adminUsers = (onlineUsersByRoom[room] || []).map((u) => ({
+  const adminUsers = onlineUsers.map((u) => ({
     username: u.username,
     contact: u.contact,
     isAdmin: !!u.isAdmin,
     joinedAt: u.joinedAt,
   }));
 
-  rooms[room].forEach((u) => {
-    if (u.socket.readyState !== WebSocket.OPEN) return;
-
-    u.socket.send(
-      JSON.stringify({
-        type: 'onlineUsersPanel',
-        users: u.isAdmin ? adminUsers : publicUsers,
-      })
-    );
+  getRoom(room).forEach((u) => {
+    safeSend(u.socket, {
+      type: 'onlineUsersPanel',
+      users: u.isAdmin ? adminUsers : publicUsers,
+    });
   });
 }
 
 function sendMutedWords(room, targetSocket = null) {
-  const payload = JSON.stringify({
+  const data = {
     type: 'mutedWordsList',
-    words: mutedWordsByRoom[room] || [],
-  });
+    words: getRoomMutedWords(room),
+  };
 
   if (targetSocket) {
-    if (targetSocket.readyState === WebSocket.OPEN) {
-      targetSocket.send(payload);
-    }
+    safeSend(targetSocket, data);
     return;
   }
 
-  getAdminSockets(room).forEach(({ socket }) => {
-    if (socket.readyState === WebSocket.OPEN) {
-      socket.send(payload);
-    }
-  });
+  getAdminSockets(room).forEach(({ socket }) => safeSend(socket, data));
 }
+
 function sendBannedList(room, targetSocket = null) {
-  const payload = JSON.stringify({
+  const data = {
     type: 'bannedList',
-    users: bannedEntries[room] || [],
-  });
+    users: getRoomBans(room),
+  };
 
   if (targetSocket) {
-    if (targetSocket.readyState === WebSocket.OPEN) {
-      targetSocket.send(payload);
-    }
+    safeSend(targetSocket, data);
     return;
   }
 
-  getAdminSockets(room).forEach(({ socket }) => {
-    if (socket.readyState === WebSocket.OPEN) {
-      socket.send(payload);
-    }
-  });
+  getAdminSockets(room).forEach(({ socket }) => safeSend(socket, data));
 }
+
+function sendAdminPanels(room) {
+  sendOnlineUsersPanel(room);
+  sendMutedWords(room);
+  sendBannedList(room);
+}
+
+function syncOnlineUser(user) {
+  const onlineUsers = getRoomOnlineUsers(user.room);
+  const existing = onlineUsers.find((u) => u.contact === user.contact);
+
+  if (existing) {
+    existing.username = user.username;
+    existing.contact = user.contact;
+    existing.isAdmin = user.isAdmin;
+    existing.joinedAt = existing.joinedAt || new Date().toISOString();
+  } else {
+    onlineUsers.push({
+      username: user.username,
+      contact: user.contact,
+      isAdmin: user.isAdmin,
+      joinedAt: new Date().toISOString(),
+    });
+  }
+}
+
+function removeOnlineUser(user) {
+  onlineUsersByRoom[user.room] = getRoomOnlineUsers(user.room).filter(
+    (u) => u.contact !== user.contact
+  );
+}
+
+async function upsertVisitor({ ip, username, contact }) {
+  const doc = await Visitor.findOneAndUpdate(
+    { contact },
+    { ip, username, contact, time: new Date() },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
+  allVisitorsCache.set(contact, {
+    username: doc.username,
+    contact: doc.contact,
+    time: new Date(doc.time).toISOString(),
+  });
+
+  return doc;
+}
+
 app.post('/log-visitor', async (req, res) => {
   try {
-    const { username, contact } = req.body;
-    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+    const username = sanitizeText(req.body.username || '');
+    const contact = String(req.body.contact || '').trim();
+    const ip = getClientIp(req);
 
     if (!contact || !/^\d{10}$/.test(contact)) {
       return res.status(400).send('Valid 10-digit contact number is required');
     }
 
-    const existingVisitor = await Visitor.findOne({ contact });
-
-    if (existingVisitor) {
-      existingVisitor.username = username || existingVisitor.username;
-      existingVisitor.ip = ip;
-      existingVisitor.time = new Date();
-      await existingVisitor.save();
-
-      allVisitorsCache.set(contact, {
-        username: existingVisitor.username,
-        contact,
-        time: new Date().toISOString(),
-      });
-
-      return res.send('Visitor already exists, updated successfully');
-    }
-
-    const visitor = new Visitor({ ip, username, contact });
-    await visitor.save();
-
-    allVisitorsCache.set(contact, {
-      username,
-      contact,
-      time: new Date().toISOString(),
-    });
-
+    await upsertVisitor({ ip, username, contact });
     res.send('Visitor logged successfully');
   } catch (err) {
     console.error('❌ Error saving visitor:', err);
@@ -252,101 +280,85 @@ app.get('/', (req, res) => {
 
 wss.on('connection', function connection(ws, req) {
   const parameters = url.parse(req.url, true);
-  const room = parameters.query.room || 'default';
-  const usernameParam = sanitizeMessage(parameters.query.username || 'Anonymous');
+  const room = String(parameters.query.room || 'default').trim();
+  const usernameParam = sanitizeText(parameters.query.username || 'Anonymous');
   const contact = String(parameters.query.contact || '').trim();
-
+  const ip = getClientIp(req);
 
   if (!contact || !/^\d{10}$/.test(contact)) {
-    ws.send(
-      JSON.stringify({
-        type: 'system',
-        message: 'Valid 10-digit contact number is required to join the chat.',
-      })
-    );
+    safeSend(ws, {
+      type: 'system',
+      message: 'Valid 10-digit contact number is required to join the chat.',
+    });
     ws.close();
     return;
   }
 
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
-
-  if (!rooms[room]) rooms[room] = [];
-  if (!onlineUsersByRoom[room]) onlineUsersByRoom[room] = [];
-  if (!mutedWordsByRoom[room]) mutedWordsByRoom[room] = [...defaultBannedWords];
-  if (!bannedEntries[room]) bannedEntries[room] = [];
-
   if (isBlockedUser(room, contact, ip)) {
-  ws.send(
-    JSON.stringify({
+    safeSend(ws, {
       type: 'system',
       message: 'You are banned from this room.',
-    })
-  );
-  ws.close();
-  return;
-}
+    });
+    ws.close();
+    return;
+  }
 
   const user = {
     socket: ws,
+    room,
     username: usernameParam,
     contact,
     ip,
     isAdmin: usernameParam === ADMIN_USERNAME && contact === ADMIN_CONTACT,
   };
 
-  Visitor.findOneAndUpdate(
-    { contact },
-    { ip, username: usernameParam, contact, time: new Date() },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
-  )
+  const roomUsers = getRoom(room);
+
+  const duplicateUsers = roomUsers.filter(
+    (u) => u.username === user.username || u.contact === user.contact
+  );
+
+  duplicateUsers.forEach((dup) => {
+    try {
+      dup.socket.close();
+    } catch (_) {}
+  });
+
+  rooms[room] = roomUsers.filter(
+    (u) => u.username !== user.username && u.contact !== user.contact
+  );
+
+  getRoom(room).push(user);
+  syncOnlineUser(user);
+
+  upsertVisitor({ ip, username: user.username, contact: user.contact })
     .then(() => {
-      allVisitorsCache.set(contact, {
-        username: usernameParam,
-        contact,
-        time: new Date().toISOString(),
-      });
-      console.log(`📥 Visitor saved/updated: ${usernameParam} (${ip})`);
+      console.log(`📥 Visitor saved/updated: ${user.username} (${ip})`);
     })
     .catch((err) => console.error('❌ Error saving visitor:', err));
 
-  rooms[room].push(user);
-
-  onlineUsersByRoom[room].push({
-    username: user.username,
-    contact: user.contact,
-    isAdmin: user.isAdmin,
-    joinedAt: new Date().toISOString(),
+  broadcast(room, {
+    type: 'system',
+    message: `${user.username} has joined the chat!`,
   });
 
-  
-
   sendUserList(room);
-  sendOnlineUsersPanel(room);
-  sendMutedWords(room);
-  sendBannedList(room);
+  sendAdminPanels(room);
 
-  ws.on('message', function incoming(message) {
+  ws.on('message', async function incoming(message) {
     try {
       const data = JSON.parse(message);
 
       if (data.type === 'join') {
-        user.username = sanitizeMessage(data.username || user.username || 'Anonymous');
+        const newUsername = sanitizeText(data.username || user.username || 'Anonymous');
+        user.username = newUsername;
+        user.isAdmin = user.username === ADMIN_USERNAME && user.contact === ADMIN_CONTACT;
 
-        const onlineUser = (onlineUsersByRoom[room] || []).find(
-          (u) => u.contact === user.contact
-        );
-        if (onlineUser) {
-          onlineUser.username = user.username;
-          onlineUser.isAdmin = user.isAdmin;
-        }
-
-        broadcast(room, {
-          type: 'system',
-          message: `${user.username} joined the chat`,
-        });
+        syncOnlineUser(user);
+        await upsertVisitor({ ip: user.ip, username: user.username, contact: user.contact });
 
         sendUserList(room);
-        sendOnlineUsersPanel(room);
+        sendAdminPanels(room);
         return;
       }
 
@@ -360,34 +372,30 @@ wss.on('connection', function connection(ws, req) {
       }
 
       if (data.type === 'message') {
-        const sanitizedMessage = sanitizeMessage(data.message);
+        const sanitizedMessage = sanitizeText(data.message);
         if (!sanitizedMessage) return;
 
         const userKey = `${room}:${user.username}:${ip}`;
         if (isRateLimited(userKey)) {
-          ws.send(
-            JSON.stringify({
-              type: 'system',
-              message: 'Too many messages. Please wait a few seconds.',
-            })
-          );
+          safeSend(ws, {
+            type: 'system',
+            message: 'Too many messages. Please wait a few seconds.',
+          });
           return;
         }
 
         if (containsBannedWords(sanitizedMessage, room)) {
-          ws.send(
-            JSON.stringify({
-              type: 'system',
-              message: 'Your message contains inappropriate language and was not sent.',
-            })
-          );
+          safeSend(ws, {
+            type: 'system',
+            message: 'Your message contains inappropriate language and was not sent.',
+          });
           return;
         }
 
         let safeReplyTo = null;
         if (data.replyTo && typeof data.replyTo === 'object') {
-          const replyUsername = sanitizeMessage(data.replyTo.username || '');
-          const replyMessage = sanitizeMessage(data.replyTo.message || '');
+          const replyUsername = sanitizeText(data.replyTo.username || '');
+          const replyMessage = sanitizeText(data.replyTo.message || '');
           if (replyUsername && replyMessage) {
             safeReplyTo = {
               username: replyUsername,
@@ -407,99 +415,120 @@ wss.on('connection', function connection(ws, req) {
       }
 
       if (data.type === 'privateMessage') {
-        const sanitizedPrivateMessage = sanitizeMessage(data.message);
+        const sanitizedPrivateMessage = sanitizeText(data.message);
         if (!sanitizedPrivateMessage) return;
 
         if (containsBannedWords(sanitizedPrivateMessage, room)) {
-          ws.send(
-            JSON.stringify({
-              type: 'system',
-              message:
-                'Your private message contains inappropriate language and was not sent.',
-            })
-          );
+          safeSend(ws, {
+            type: 'system',
+            message: 'Your private message contains inappropriate language and was not sent.',
+          });
           return;
         }
 
-        const targetUser = rooms[room].find((u) => u.username === data.recipient);
+        const targetUser = getRoom(room).find((u) => u.username === data.recipient);
         if (targetUser) {
-          targetUser.socket.send(
-            JSON.stringify({
-              type: 'privateMessage',
-              username: user.username,
-              message: sanitizedPrivateMessage,
-            })
-          );
+          safeSend(targetUser.socket, {
+            type: 'privateMessage',
+            username: user.username,
+            message: sanitizedPrivateMessage,
+          });
+        } else {
+          safeSend(ws, {
+            type: 'system',
+            message: `${sanitizeText(data.recipient || 'User')} is offline.`,
+          });
         }
         return;
       }
 
       if (data.type === 'adminAnnouncementPrivate') {
-        if (!user.isAdmin) return;
+        if (!isAdminUser(user)) return;
 
-        const targetUser = rooms[room].find((u) => u.username === data.targetUsername);
-        const safeMessage = sanitizeMessage(data.message);
+        const targetUsername = sanitizeText(data.targetUsername || '');
+        const safeMessage = sanitizeText(data.message || '');
+        if (!targetUsername || !safeMessage) return;
 
-        if (targetUser && safeMessage) {
-          targetUser.socket.send(
-            JSON.stringify({
-              type: 'privateAnnouncement',
-              from: user.username,
-              message: safeMessage,
-            })
-          );
+        const targetUser = getRoom(room).find((u) => u.username === targetUsername);
+
+        if (targetUser) {
+          safeSend(targetUser.socket, {
+            type: 'privateAnnouncement',
+            from: user.username,
+            message: safeMessage,
+          });
+
+          safeSend(ws, {
+            type: 'adminActionResult',
+            message: `Private announcement sent to ${targetUsername}.`,
+          });
+        } else {
+          safeSend(ws, {
+            type: 'adminActionResult',
+            message: `${targetUsername} is offline.`,
+          });
         }
         return;
       }
 
       if (data.type === 'adminAddMutedWord') {
-        if (!user.isAdmin) return;
+        if (!isAdminUser(user)) return;
 
-        const word = sanitizeMessage(data.word || '').toLowerCase();
+        const word = sanitizeText(data.word || '').toLowerCase();
         if (!word) return;
 
-        if (!mutedWordsByRoom[room].includes(word)) {
-          mutedWordsByRoom[room].push(word);
+        const words = getRoomMutedWords(room);
+        if (!words.includes(word)) {
+          words.push(word);
         }
 
         sendMutedWords(room);
-        return;
-      }
-
-      if (data.type === 'adminRemoveMutedWord') {
-        if (!user.isAdmin) return;
-
-        const word = sanitizeMessage(data.word || '').toLowerCase();
-        mutedWordsByRoom[room] = (mutedWordsByRoom[room] || []).filter(
-          (w) => w !== word
-        );
-
-        sendMutedWords(room);
-        return;
-      }
-
-      if (data.type === 'adminBanUser') {
-      if (!user.isAdmin) return;
-
-      const targetUsername = sanitizeMessage(data.targetUsername || '');
-      if (!targetUsername || targetUsername === user.username) return;
-
-      const targetUser = rooms[room].find((u) => u.username === targetUsername);
-      if (!targetUser) {
-        sendBannedList(room);
-        notifyAdmins(room, {
+        safeSend(ws, {
           type: 'adminActionResult',
-          message: `${targetUsername} not found online`,
+          message: `"${word}" added to muted words.`,
         });
         return;
       }
 
-  const alreadyBlocked = (bannedEntries[room] || []).some(
-    (entry) => entry.contact === targetUser.contact || entry.ip === targetUser.ip
-  );
+      if (data.type === 'adminRemoveMutedWord') {
+        if (!isAdminUser(user)) return;
+
+        const word = sanitizeText(data.word || '').toLowerCase();
+        if (!word) return;
+
+        mutedWordsByRoom[room] = getRoomMutedWords(room).filter((w) => w !== word);
+
+        sendMutedWords(room);
+        safeSend(ws, {
+          type: 'adminActionResult',
+          message: `"${word}" removed from muted words.`,
+        });
+        return;
+      }
+
+      if (data.type === 'adminBanUser') {
+        if (!isAdminUser(user)) return;
+
+        const targetUsername = sanitizeText(data.targetUsername || '');
+        if (!targetUsername || targetUsername === user.username) return;
+
+        const targetUser = getRoom(room).find((u) => u.username === targetUsername);
+        if (!targetUser) {
+          sendBannedList(room);
+          safeSend(ws, {
+            type: 'adminActionResult',
+            message: `${targetUsername} not found online.`,
+          });
+          return;
+        }
+
+        const roomBans = getRoomBans(room);
+        const alreadyBlocked = roomBans.some(
+          (entry) => entry.contact === targetUser.contact || entry.ip === targetUser.ip
+        );
 
         if (!alreadyBlocked) {
-          bannedEntries[room].push({
+          roomBans.push({
             username: targetUser.username,
             contact: targetUser.contact,
             ip: targetUser.ip,
@@ -507,87 +536,97 @@ wss.on('connection', function connection(ws, req) {
           });
         }
 
-        targetUser.socket.send(
-          JSON.stringify({
-            type: 'system',
-            message: 'You have been banned by admin.',
-          })
-        );
-        targetUser.socket.close();
-
-        notifyAdmins(room, {
-          type: 'adminActionResult',
-          message: `${targetUsername} banned by IP + contact`,
+        safeSend(targetUser.socket, {
+          type: 'system',
+          message: 'You have been banned by admin.',
         });
 
+        try {
+          targetUser.socket.close();
+        } catch (_) {}
+
+        sendBannedList(room);
+        sendAdminPanels(room);
+        safeSend(ws, {
+          type: 'adminActionResult',
+          message: `${targetUsername} banned by IP + contact.`,
+        });
         return;
       }
 
       if (data.type === 'adminUnbanUser') {
-  if (!user.isAdmin) return;
+        if (!isAdminUser(user)) return;
 
-  const targetUsername = sanitizeMessage(data.targetUsername || '');
-  const beforeCount = (bannedEntries[room] || []).length;
+        const targetUsername = sanitizeText(data.targetUsername || '');
+        const beforeCount = getRoomBans(room).length;
 
-  bannedEntries[room] = (bannedEntries[room] || []).filter(
-    (entry) => entry.username !== targetUsername
-  );
+        bannedEntries[room] = getRoomBans(room).filter(
+          (entry) => entry.username !== targetUsername
+        );
 
-  const afterCount = bannedEntries[room].length;
-  sendBannedList(room);
-  notifyAdmins(room, {
-    
-    type: 'adminActionResult',
-    message:
-      beforeCount !== afterCount
-        ? `${targetUsername} unbanned successfully`
-        : `${targetUsername} not found in ban list`,
-  });
+        const afterCount = bannedEntries[room].length;
 
-  return;
-}
+        sendBannedList(room);
+        sendAdminPanels(room);
+        safeSend(ws, {
+          type: 'adminActionResult',
+          message:
+            beforeCount !== afterCount
+              ? `${targetUsername} unbanned successfully.`
+              : `${targetUsername} not found in ban list.`,
+        });
+        return;
+      }
 
       if (data.type === 'adminExportVisitors') {
-        if (!user.isAdmin) return;
+        if (!isAdminUser(user)) return;
 
-        const visitors = Array.from(allVisitorsCache.values());
+        let visitors = Array.from(allVisitorsCache.values());
 
-        ws.send(
-          JSON.stringify({
-            type: 'adminVisitorsExport',
-            visitors,
-          })
-        );
+        if (visitors.length === 0) {
+          const docs = await Visitor.find().sort({ time: -1 }).limit(500).lean();
+          visitors = docs.map((v) => ({
+            username: v.username,
+            contact: v.contact,
+            time: new Date(v.time).toISOString(),
+          }));
+        }
+
+        safeSend(ws, {
+          type: 'adminVisitorsExport',
+          visitors,
+        });
         return;
       }
 
       if (data.type === 'kick') {
-        const isAdmin = user.isAdmin;
-        if (isAdmin && data.targetUsername && data.targetUsername !== user.username) {
-          const targetUser = rooms[room].find((u) => u.username === data.targetUsername);
-          if (targetUser) {
-            targetUser.socket.send(
-              JSON.stringify({
-                type: 'system',
-                message: 'You have been kicked out of the room.',
-              })
-            );
-            targetUser.socket.close();
-            rooms[room] = rooms[room].filter((u) => u !== targetUser);
+        if (!isAdminUser(user)) return;
 
-            onlineUsersByRoom[room] = (onlineUsersByRoom[room] || []).filter(
-              (u) => u.contact !== targetUser.contact
-            );
+        const targetUsername = sanitizeText(data.targetUsername || '');
+        if (!targetUsername || targetUsername === user.username) return;
 
-            broadcast(room, {
-              type: 'system',
-              message: `${data.targetUsername} was kicked by admin.`,
-            });
-
-            sendUserList(room);
-            sendOnlineUsersPanel(room);
-          }
+        const targetUser = getRoom(room).find((u) => u.username === targetUsername);
+        if (!targetUser) {
+          safeSend(ws, {
+            type: 'adminActionResult',
+            message: `${targetUsername} not found online.`,
+          });
+          return;
         }
+
+        safeSend(targetUser.socket, {
+          type: 'system',
+          message: 'You have been kicked out of the room.',
+        });
+
+        try {
+          targetUser.socket.close();
+        } catch (_) {}
+
+        safeSend(ws, {
+          type: 'adminActionResult',
+          message: `${targetUsername} was kicked by admin.`,
+        });
         return;
       }
     } catch (err) {
@@ -596,15 +635,8 @@ wss.on('connection', function connection(ws, req) {
   });
 
   ws.on('close', function () {
-    if (rooms[room]) {
-      rooms[room] = rooms[room].filter((u) => u.socket !== ws);
-    }
-
-    if (onlineUsersByRoom[room]) {
-      onlineUsersByRoom[room] = onlineUsersByRoom[room].filter(
-        (u) => u.contact !== user.contact
-      );
-    }
+    rooms[room] = getRoom(room).filter((u) => u.socket !== ws);
+    removeOnlineUser(user);
 
     broadcast(room, {
       type: 'system',
@@ -612,7 +644,7 @@ wss.on('connection', function connection(ws, req) {
     });
 
     sendUserList(room);
-    sendOnlineUsersPanel(room);
+    sendAdminPanels(room);
 
     if (rooms[room] && rooms[room].length === 0) {
       delete rooms[room];
