@@ -152,13 +152,18 @@
     }
 
     .welcome-video{
+      position: absolute;
+      inset: 0;
       width:100%;
       height:100%;
       object-fit:contain;
-      object-position:center center;
-      background:#000;
-      opacity:1;
+      z-index: 1;
+      filter: brightness(.75) contrast(1.05);
+      opacity:.34;
       pointer-events:none;
+    }
+    .welcome-card{
+      z-index: 2;
     }
 
     #welcomePopup{
@@ -1101,11 +1106,11 @@
       </div>
 
       <h2>Welcome to Shravan.Chat</h2>
-      <p class="entry-subtitle">Step into a glowing neon space filled with style, expressions and vibes ✨</p>
+      <p class="entry-subtitle">Login aithee kaa veree untadhi.. ✨</p>
 
       <div class="entry-fields">
-        <input type="text" id="entry-username" placeholder="Enter your username" maxlength="20" />
-        <input type="tel" id="entry-contact" placeholder="Enter your 10-digit contact number" maxlength="10" inputmode="numeric" />
+        <input type="text" id="entry-username" placeholder="Enter your username" maxlength="20" inputmode="string" />
+        <input type="tel" id="entry-contact" placeholder="Enter your contact number" maxlength="10" inputmode="numeric" />
         <button id="entry-continue">Continue</button>
       </div>
 
@@ -1143,11 +1148,11 @@
         <span class="kiss">💋</span>
         <span class="kiss">🤩</span>
       </div>
-      <h2><span class="welcome-highlight">Shravan</span> invites you into a dreamy neon vibe</h2>
+      <h2><span class="welcome-highlight">Shravan</span> invites you into a security chat vibe😜</h2>
       <div id="welcomeGreeting" class="welcome-greeting"></div>
       <div class="welcome-owner">Smiles, glow, expressions and pure stylish energy 💚</div>
       <p class="welcome-subglow">
-        Please wait... entering your glowing chat space
+        Please wait... 
         <span class="loading-dots"><span></span><span></span><span></span></span>
       </p>
     </div>
@@ -1642,59 +1647,76 @@
     });
 
     entryContinue.addEventListener('click', () => {
-      if (!validateEntry()) return;
+    if (!validateEntry()) return;
 
-      entryContinue.disabled = true;
-      entryContinue.innerHTML = `Please wait <span class="loading-dots"><span></span><span></span><span></span></span>`;
+    entryContinue.disabled = true;
+    entryContinue.innerHTML = `Please wait <span class="loading-dots"><span></span><span></span><span></span></span>`;
 
-      if (welcomeGreeting) {
-        welcomeGreeting.textContent = `Welcome ${username} 💚`;
-      }
+    if (welcomeGreeting) {
+      welcomeGreeting.textContent = `Welcome ${username} 💚`;
+    }
 
+    if (welcomePopup) {
+      welcomePopup.classList.add('hidden');
+    }
+
+    const openChatApp = () => {
+      welcomeScreen.classList.add('hidden');
+      appShell.style.display = 'block';
+      connectSocket();
+
+      fetch(`${location.origin}/log-visitor`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, contact })
+      })
+        .then(res => res.text())
+        .then(console.log)
+        .catch(console.error);
+    };
+
+    const showPopupThenOpenChat = () => {
       if (welcomePopup) {
-        welcomePopup.classList.add('hidden');
+        welcomePopup.classList.remove('hidden');
       }
 
       setTimeout(() => {
-        entryScreen.classList.add('hidden');
-        welcomeScreen.classList.remove('hidden');
+        openChatApp();
+      }, 4000); // popup 4 sec
+    };
 
-        if (welcomeVideo) {
-          welcomeVideo.currentTime = 0;
-          welcomeVideo.play().catch(() => {});
-        }
+    setTimeout(() => {
+      entryScreen.classList.add('hidden');
+      welcomeScreen.classList.remove('hidden');
 
-        setTimeout(() => {
-          if (welcomePopup) {
-            welcomePopup.classList.remove('hidden');
-          }
-        }, 3000);
+      if (welcomeVideo) {
+        welcomeVideo.currentTime = 0;
 
-        setTimeout(() => {
-          if (welcomeVideo) {
-            welcomeVideo.pause();
-            welcomeVideo.currentTime = 0;
-          }
+        let handled = false;
 
-          if (welcomePopup) {
-            welcomePopup.classList.add('hidden');
-          }
+        const finishVideoFlow = () => {
+          if (handled) return;
+          handled = true;
 
-          welcomeScreen.classList.add('hidden');
-          appShell.style.display = 'block';
-          connectSocket();
+          welcomeVideo.pause();
+          showPopupThenOpenChat();
+        };
 
-          fetch(`${location.origin}/log-visitor`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, contact })
-          })
-          .then(res => res.text())
-          .then(console.log)
-          .catch(console.error);
-        }, 7000);
-      }, 500);
-    });
+        welcomeVideo.onended = finishVideoFlow;
+
+        welcomeVideo.play().catch(() => {
+          // autoplay fail aithe fallback
+          setTimeout(finishVideoFlow, 15000);
+        });
+
+        // fallback for exact 15 sec video
+        setTimeout(finishVideoFlow, 15000);
+      } else {
+        // video lekunte direct popup -> 4 sec -> chat
+        showPopupThenOpenChat();
+      }
+    }, 300);
+   });
 
     entryUsername.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
