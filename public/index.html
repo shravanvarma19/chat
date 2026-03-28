@@ -513,13 +513,6 @@
       gap:8px;
       position:relative;
       z-index:2;
-      background-image:
-        linear-gradient(rgba(0,0,0,.50), rgba(0,0,0,.62)),
-        url('/myphoto.jpg');
-      background-repeat:no-repeat;
-      background-position:center center;
-      background-size:contain;
-      background-color:#111;
       box-shadow:inset 0 0 24px rgba(0,255,153,.05), 0 0 12px rgba(0,255,153,.06);
     }
 
@@ -853,6 +846,67 @@
       15%{ opacity:1; }
       100%{ transform:translateY(-220px) scale(1.15) rotate(16deg); opacity:0; }
     }
+    .chat-main{
+      position:relative;
+      flex:1;
+      min-height:0;
+      border-radius:24px;
+      overflow:hidden;
+      border-top:2px solid var(--line);
+      border-bottom:2px solid var(--line);
+      background:#111;
+      isolation:isolate;
+    }
+
+    .chat-bg-layer{
+      position:absolute;
+      inset:0;
+      z-index:0;
+      pointer-events:none;
+      background:
+        linear-gradient(rgba(0,0,0,.50), rgba(0,0,0,.62)),
+        url('/myphoto.jpg');
+      background-repeat:no-repeat;
+      background-position:center center;
+      background-size:contain;
+      background-color:#111;
+      transform:translateZ(0);
+      will-change:transform;
+    }
+
+    .chat-side-decor{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      z-index:1;
+    }
+
+    #chat{
+      position:absolute;
+      inset:0;
+      z-index:2;
+      overflow-y:auto;
+      overflow-x:hidden;
+      padding:18px 18px 24px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      background:transparent !important;
+      -webkit-overflow-scrolling:touch;
+      transform:translateZ(0);
+      backface-visibility:hidden;
+    }
+
+    .chat-photo-burst,
+    .emoji-float-layer{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      overflow:hidden;
+    }
+
+    .chat-photo-burst{ z-index:6; }
+    .emoji-float-layer{ z-index:7; }
 
     @media screen and (max-width: 768px){
       body{
@@ -881,7 +935,25 @@
         font-size:12px !important;
         border-radius:14px !important;
       }
+      .message{
+        transform:translateZ(0);
+        backface-visibility:hidden;
+      }
 
+      .typing-indicator-inside{
+        transform:translateZ(0);
+      }
+
+      @media (max-width: 768px){
+        .chat-bg-layer{
+          background-size:contain;
+          background-position:center center;
+        }
+
+        #chat{
+          padding:14px 12px 18px;
+        }
+      }
       .mobile-users-toggle{
         display:block;
         margin:8px 8px 0;
@@ -1185,7 +1257,7 @@
           <div class="chat-side-photo s5"><img src="/myphoto5.jpg" alt=""></div>
           <div class="chat-side-photo s6"><img src="/myphoto6.jpg" alt=""></div>
         </div>
-
+        <div class=""chat-bg-layer"></div>
         <div id="chat">
           <div id="chatPhotoBurst" class="chat-photo-burst"></div>
           <div id="emojiFloatLayer" class="emoji-float-layer"></div>
