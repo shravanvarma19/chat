@@ -146,9 +146,7 @@
       align-items:center;
       justify-content:center;
       z-index:1;
-      background:
-        radial-gradient(circle at center, rgba(0,255,153,0.08), transparent 45%),
-        rgba(0,0,0,0.72);
+      background:#000;
     }
 
     .welcome-video{
@@ -158,9 +156,21 @@
       height:100%;
       object-fit:contain;
       z-index: 1;
-      filter: brightness(.75) contrast(1.05);
-      opacity:.34;
-      pointer-events:none;
+      background: #000;
+      display: block;
+    }
+    #welcomePopup{
+    position: relative;
+    z-index: 3;
+    width: min(92vw, 420px);
+    margin: auto;
+    }
+
+    #welcome-screen .floaters,
+    #welcome-screen .hearts-layer,
+    #welcome-screen .spark-layer,
+    #welcome-screen .bg-grid{
+      display: none !important;
     }
     .welcome-card{
       z-index: 2;
@@ -1106,7 +1116,7 @@
       </div>
 
       <h2>Welcome to Shravan.Chat</h2>
-      <p class="entry-subtitle">Login aithee kaa veree untadhi.. ✨</p>
+      <p class="entry-subtitle">Login aithee kaa firstuu masthuu untadhi.. ✨</p>
 
       <div class="entry-fields">
         <input type="text" id="entry-username" placeholder="Enter your username" maxlength="20" inputmode="string" />
@@ -1136,7 +1146,7 @@
     </div>
 
     <div class="welcome-video-wrap">
-      <video id="welcomeVideo" class="welcome-video" muted playsinline preload="auto">
+      <video id="welcomeVideo" class="welcome-video" playsinline preload="auto">
         <source src="/welcome.mp4" type="video/mp4">
       </video>
     </div>
@@ -1148,7 +1158,7 @@
         <span class="kiss">💋</span>
         <span class="kiss">🤩</span>
       </div>
-      <h2><span class="welcome-highlight">Shravan</span> invites you into a security chat vibe😜</h2>
+      <h2><span class="welcome-highlight">Shravan</span> invites you into a secure chat vibe😜</h2>
       <div id="welcomeGreeting" class="welcome-greeting"></div>
       <div class="welcome-owner">Smiles, glow, expressions and pure stylish energy 💚</div>
       <p class="welcome-subglow">
