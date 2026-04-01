@@ -7,7 +7,6 @@ const url = require("url");
 const path = require("path");
 const crypto = require("crypto");
 const mongoose = require("mongoose");
-const OpenAI = require("openai");
 
 const app = express();
 const server = http.createServer(app);
@@ -19,10 +18,6 @@ const PORT = Number(process.env.PORT || 3000);
 
 const mongoURI =
   process.env.MONGO_URI || "mongodb://127.0.0.1:27017/shravan_chat";
-
-const openai = process.env.OPENAI_API_KEY
-  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  : null;
 
 const rooms = {};
 const mutedWordsByRoom = {};
@@ -122,15 +117,6 @@ function sanitizeText(input) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;")
     .trim();
-}
-
-function decodeHtml(text = "") {
-  return String(text)
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&amp;/g, "&");
 }
 
 function getClientIp(req) {
@@ -284,92 +270,6 @@ function isSuspiciousText(message) {
   if (text.length > 500) return true;
   if (/(.)\1{12,}/.test(text)) return true;
   return false;
-}
-
-function shouldTriggerAI(message) {
-  const text = String(message || "").trim();
-  if (!text) return false;
-
-  const lower = text.toLowerCase();
-
-  if (lower.includes("@ai")) return true;
-  if (text.endsWith("?")) return true;
-  if (/^(hi|hello|hey|hii|hlo)\b/i.test(text)) return true;
-
-  return false;
-}
-
-function shouldSendAIInRoom(room) {
-  return getRoom(room).length === 1;
-}
-
-function getFallbackAIReply(userMessage) {
-  const text = String(userMessage || "").toLowerCase();
-
-  if (text.includes("hi") || text.includes("hello") || text.includes("hey")) {
-    return "Hello machaa 👋";
-  }
-  if (text.includes("how are you")) {
-    return "Nenu bagunna machaa 😎";
-  }
-  if (text.includes("bye")) {
-    return "Bye machaa 👋";
-  }
-  if (text.includes("love")) {
-    return "Awww machaa 💚";
-  }
-  return "Okay machaa 🤖";
-}
-
-async function getRealAIReply(userMessage, username) {
-  try {
-    if (!openai) {
-      return getFallbackAIReply(userMessage);
-    }
-
-    const response = await openai.responses.create({
-      model: "gpt-5.4",
-      reasoning: { effort: "low" },
-      input: [
-        {
-          role: "system",
-          content: [
-            {
-              type: "input_text",
-              text:
-                "You are Shravan AI, a friendly stylish assistant inside Shravan.Chat. " +
-                "Reply short, natural, playful, and safe. " +
-                "Keep replies under 2 sentences. " +
-                "Do not produce abusive, sexual, hateful, illegal, or dangerous content."
-            }
-          ]
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: "input_text",
-              text: `User name: ${username}\nMessage: ${userMessage}`
-            }
-          ]
-        }
-      ]
-    });
-
-    return (response.output_text || "").trim() || getFallbackAIReply(userMessage);
-  } catch (err) {
-    console.error("❌ OpenAI reply error:", err);
-
-    if (
-      err?.status === 429 ||
-      err?.code === "insufficient_quota" ||
-      err?.type === "insufficient_quota"
-    ) {
-      return getFallbackAIReply(userMessage);
-    }
-
-    return "Sorry machaa, AI ippudu reply ivvalekapoyindi.";
-  }
 }
 
 function sendUserList(room) {
@@ -576,7 +476,7 @@ app.post("/log-visitor", async (req, res) => {
       existingContactUser.username !== username
     ) {
       return res.json({
-        success:false,
+        success: false,
         blocked: false,
         duplicateContact: true,
         message: "This contact number is already linked to another username"
@@ -860,46 +760,6 @@ wss.on("connection", async (ws, req) => {
             message: sanitizedMessage,
             replyTo: safeReplyTo
           });
-
-          const plainMessageForAI = decodeHtml(sanitizedMessage);
-
-          if (shouldTriggerAI(plainMessageForAI) && shouldSendAIInRoom(room)) {
-            setTimeout(async () => {
-              try {
-                if (!shouldSendAIInRoom(room)) return;
-
-                const aiReply = await getRealAIReply(
-                  plainMessageForAI,
-                  user.username
-                );
-
-                await ChatMessage.create({
-                  room,
-                  username: "Shravan AI",
-                  contact: "0000000000",
-                  message: aiReply,
-                  replyTo: {
-                    username: user.username,
-                    message: sanitizedMessage
-                  },
-                  isPrivate: false
-                });
-
-                broadcast(room, {
-                  type: "message",
-                  username: "Shravan AI",
-                  usernameColor: "#ffcc00",
-                  message: aiReply,
-                  replyTo: {
-                    username: user.username,
-                    message: sanitizedMessage
-                  }
-                });
-              } catch (err) {
-                console.error("❌ AI auto reply error:", err);
-              }
-            }, 1200);
-          }
 
           return;
         }
